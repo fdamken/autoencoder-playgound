@@ -10,7 +10,7 @@ from torchvision.transforms import transforms
 
 IMAGE_SIZE = 28 * 28
 BATCH_SIZE = 128
-TEST_BATCH_SIZE = 1000
+TEST_BATCH_SIZE = 128
 BOTTLENECK_SIZE = 3
 LEARNING_RATE = 0.01
 MAX_EPOCHS = 100
@@ -107,9 +107,9 @@ if __name__ == '__main__':
         writer.add_scalar('test_loss', test_loss, epoch)
 
         # noinspection PyUnboundLocalVariable
-        writer.add_image('original', img.view(img.size(0), 1, 28, 28), epoch)
+        writer.add_image('original', torchvision.utils.make_grid(img.view(out.size(0), 1, 28, 28)), epoch)
         # noinspection PyUnboundLocalVariable
-        writer.add_image('reconstruction', out.view(out.size(0), 1, 28, 28), epoch)
+        writer.add_image('reconstruction', torchvision.utils.make_grid(out.view(out.size(0), 1, 28, 28)), epoch)
         torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), '../img/img_%05d.png' % epoch)
         torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), '../img/out_%05d.png' % epoch)
     writer.close()
