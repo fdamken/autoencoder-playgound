@@ -14,14 +14,15 @@ BATCH_SIZE = 128
 TEST_BATCH_SIZE = 1000
 BOTTLENECK_SIZE = 3
 LEARNING_RATE = 0.01
+MAX_EPOCHS = 100
 
 
 
-class Encoder(nn.Module):
+class AutoEncoder(nn.Module):
     def __init__(self, bottleneck_size):
-        super(Encoder, self).__init__()
+        super(AutoEncoder, self).__init__()
 
-        self._fc = nn.Sequential(
+        self._encoder = nn.Sequential(
                 nn.Linear(IMAGE_SIZE, 128),
                 nn.ReLU(True),
                 nn.Linear(128, 64),
@@ -31,18 +32,7 @@ class Encoder(nn.Module):
                 nn.Linear(12, bottleneck_size),
                 nn.ReLU(True)
         )
-
-
-    def forward(self, x):
-        return self._fc(x)
-
-
-
-class Decoder(nn.Module):
-    def __init__(self, bottleneck_size):
-        super(Decoder, self).__init__()
-
-        self._fc = nn.Sequential(
+        self._decoder = nn.Sequential(
                 nn.Linear(bottleneck_size, 12),
                 nn.ReLU(True),
                 nn.Linear(12, 64),
@@ -55,20 +45,7 @@ class Decoder(nn.Module):
 
 
     def forward(self, x):
-        return self._fc(x)
-
-
-
-class AutoEncoder(nn.Module):
-    def __init__(self, bottleneck_size):
-        super(AutoEncoder, self).__init__()
-
-        self.encoder = Encoder(bottleneck_size)
-        self.decoder = Decoder(bottleneck_size)
-
-
-    def forward(self, x):
-        return self.decoder(self.encoder(x))
+        return self._decoder(self._encoder(x))
 
 
 
@@ -101,25 +78,23 @@ if __name__ == '__main__':
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE)
     writer = SummaryWriter(comment = '-auto_encoder_mnist')
-    epoch = 0
-    while True:
-        epoch += 1
-
-        losses = []
+    for epoch in range(1, MAX_EPOCHS + 1):
+        total_loss = 0
         for img, _ in train_data:
             img = img.view(img.size(0), -1)
             img = img.to(device)
             out = ae(img)
 
             optimizer.zero_grad()
-            loss = loss_fn(out, img)
-            losses.append(loss.item())
-            loss.backward()
+            train_loss = loss_fn(out, img)
+            total_loss += train_loss
+            train_loss.backward()
             optimizer.step()
-        mean_loss = float(np.mean(losses))
+        total_loss /= len(train_data)
 
-        print('Epoch %5d: mean_loss=%.5f' % (epoch, mean_loss))
-        writer.add_scalar('mean_loss', mean_loss, epoch)
+        print('Epoch %5d: total_loss=%.5f' % (epoch, total_loss))
+        writer.add_scalar('total_loss', total_loss, epoch)
 
         torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), '../img/img_%05d.png' % epoch)
         torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), '../img/out_%05d.png' % epoch)
+    writer.close()
