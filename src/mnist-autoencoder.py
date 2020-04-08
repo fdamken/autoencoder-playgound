@@ -1,6 +1,5 @@
 import argparse
 
-import numpy as np
 import torch.utils.data
 import torchvision
 from tensorboardX import SummaryWriter
@@ -79,22 +78,38 @@ if __name__ == '__main__':
     optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE)
     writer = SummaryWriter(comment = '-auto_encoder_mnist')
     for epoch in range(1, MAX_EPOCHS + 1):
-        total_loss = 0
+        train_loss = 0
         for img, _ in train_data:
             img = img.view(img.size(0), -1)
             img = img.to(device)
             out = ae(img)
 
             optimizer.zero_grad()
-            train_loss = loss_fn(out, img)
-            total_loss += train_loss
-            train_loss.backward()
+            loss = loss_fn(out, img)
+            train_loss += loss
+            loss.backward()
             optimizer.step()
-        total_loss /= len(train_data)
+        train_loss /= len(train_data)
 
-        print('Epoch %5d: total_loss=%.5f' % (epoch, total_loss))
-        writer.add_scalar('total_loss', total_loss, epoch)
+        test_loss = 0
+        for img, _ in test_data:
+            img = img.view(img.size(0), -1)
+            img = img.to(device)
+            out = ae(img)
 
+            optimizer.zero_grad()
+            loss = loss_fn(out, img)
+            test_loss += loss
+        test_loss /= len(test_data)
+
+        print('Epoch %5d: train_loss=%.5f, test_loss=%.5f' % (epoch, train_loss, test_loss))
+        writer.add_scalar('train_loss', train_loss, epoch)
+        writer.add_scalar('test_loss', test_loss, epoch)
+
+        # noinspection PyUnboundLocalVariable
+        writer.add_image('original', img.view(img.size(0), 1, 28, 28), epoch)
+        # noinspection PyUnboundLocalVariable
+        writer.add_image('reconstruction', out.view(out.size(0), 1, 28, 28), epoch)
         torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), '../img/img_%05d.png' % epoch)
         torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), '../img/out_%05d.png' % epoch)
     writer.close()
