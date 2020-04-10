@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import torch.utils.data
 import torchvision
@@ -14,6 +15,8 @@ TEST_BATCH_SIZE = 128
 BOTTLENECK_SIZE = 3
 LEARNING_RATE = 0.01
 MAX_EPOCHS = 100
+WRITE_IMAGE_EVERY_N_EPOCHS = 10
+IMG_OUT_DIRECTORY = 'mnist-autoencoder_img'
 
 
 
@@ -51,10 +54,18 @@ class AutoEncoder(nn.Module):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda', action = 'store_true', help = 'Enable CUDA acceleration.')
+    parser.add_argument('--overwrite', action = 'store_true', help = 'Overwrite image directory %s directory if it exists.' % IMG_OUT_DIRECTORY)
     args = parser.parse_args()
     if args.cuda and not torch.cuda.is_available():
         raise Exception('CUDA acceleration requested but is not available!')
     device = torch.device('cuda' if args.cuda else 'cpu')
+
+    if os.path.exists(IMG_OUT_DIRECTORY):
+        if args.overwrite:
+            os.removedirs(IMG_OUT_DIRECTORY)
+        else:
+            raise Exception('Image directory %s exists!' % IMG_OUT_DIRECTORY)
+    os.makedirs(IMG_OUT_DIRECTORY)
 
     train_data = torch.utils.data.DataLoader(datasets.MNIST('../data',
                                                             train = True,
@@ -106,10 +117,11 @@ if __name__ == '__main__':
         writer.add_scalar('train_loss', train_loss, epoch)
         writer.add_scalar('test_loss', test_loss, epoch)
 
-        # noinspection PyUnboundLocalVariable
-        writer.add_image('original', torchvision.utils.make_grid(img.view(out.size(0), 1, 28, 28)), epoch)
-        # noinspection PyUnboundLocalVariable
-        writer.add_image('reconstruction', torchvision.utils.make_grid(out.view(out.size(0), 1, 28, 28)), epoch)
-        torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), '../img/img_%05d.png' % epoch)
-        torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), '../img/out_%05d.png' % epoch)
+        if epoch % WRITE_IMAGE_EVERY_N_EPOCHS == 0:
+            # noinspection PyUnboundLocalVariable
+            writer.add_image('original', torchvision.utils.make_grid(img.view(out.size(0), 1, 28, 28)), epoch)
+            # noinspection PyUnboundLocalVariable
+            writer.add_image('reconstruction', torchvision.utils.make_grid(out.view(out.size(0), 1, 28, 28)), epoch)
+            torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), IMG_OUT_DIRECTORY + '/img_%05d.png' % epoch)
+            torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), IMG_OUT_DIRECTORY + '/out_%05d.png' % epoch)
     writer.close()
