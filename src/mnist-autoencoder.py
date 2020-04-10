@@ -102,16 +102,17 @@ if __name__ == '__main__':
             optimizer.step()
         train_loss /= len(train_data)
 
-        test_loss = 0
-        for img, _ in test_data:
-            img = img.view(img.size(0), -1)
-            img = img.to(device)
-            out = ae(img)
+        with torch.no_grad():
+            test_loss = 0
+            for img, _ in test_data:
+                img = img.view(img.size(0), -1)
+                img = img.to(device)
+                out = ae(img)
 
-            optimizer.zero_grad()
-            loss = loss_fn(out, img)
-            test_loss += loss
-        test_loss /= len(test_data)
+                optimizer.zero_grad()
+                loss = loss_fn(out, img)
+                test_loss += loss
+            test_loss /= len(test_data)
 
         print('Epoch %5d: train_loss=%.5f, test_loss=%.5f' % (epoch, train_loss, test_loss))
         writer.add_scalar('train_loss', train_loss, epoch)
