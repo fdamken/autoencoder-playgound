@@ -112,9 +112,7 @@ if __name__ == '__main__':
                 img = img.to(device)
                 out = ae(img)
 
-                optimizer.zero_grad()
-                loss = criterion(out, img)
-                test_loss += loss
+                test_loss += criterion(out, img)
             test_loss /= len(test_data)
 
         print('Epoch %5d: train_loss=%.5f, test_loss=%.5f' % (epoch, train_loss, test_loss))
