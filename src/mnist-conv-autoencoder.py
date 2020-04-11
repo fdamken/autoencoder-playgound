@@ -1,7 +1,7 @@
 import argparse
 import os
+import shutil
 
-import numpy as np
 import torch.utils.data
 import torchvision
 from tensorboardX import SummaryWriter
@@ -10,11 +10,13 @@ from torchvision import datasets
 from torchvision.transforms import transforms
 
 
+torch.manual_seed(42)
+
 IMAGE_SHAPE = (28, 28)
 BATCH_SIZE = 128
 TEST_BATCH_SIZE = 128
 BOTTLENECK_SIZE = 3
-LEARNING_RATE = 0.01
+LEARNING_RATE = 1e-3
 MAX_EPOCHS = 100
 WRITE_IMAGE_EVERY_N_EPOCHS = 10
 IMG_OUT_DIRECTORY = 'mnist-conv-autoencoder_img'
@@ -29,7 +31,7 @@ class Flatten(nn.Module):
 
 class UnFlatten(nn.Module):
     def forward(self, x: torch.Tensor):
-        return x.view(x.size(0), 32, *(np.array(IMAGE_SHAPE) - 4))
+        return x.view(x.size(0), 8, 2, 2)
 
 
 
@@ -37,31 +39,21 @@ class AutoEncoder(nn.Module):
     def __init__(self, bottleneck_size):
         super(AutoEncoder, self).__init__()
 
-        encoder_conv = nn.Sequential(
-                nn.Conv2d(1, 16, kernel_size = 3),
-                nn.ReLU(True),
-                nn.Conv2d(16, 32, kernel_size = 3),
-                nn.ReLU(True),
-                Flatten()
-        )
-        conv_out_size = encoder_conv(torch.zeros(1, 1, *IMAGE_SHAPE)).size(1)
         self._encoder = nn.Sequential(
-                encoder_conv,
-                nn.Linear(conv_out_size, 32),
+                nn.Conv2d(1, 16, kernel_size = 3, stride = 3, padding = 1),
                 nn.ReLU(True),
-                nn.Linear(32, bottleneck_size),
-                nn.ReLU(True)
+                nn.MaxPool2d(kernel_size = 2, stride = 2),
+                nn.Conv2d(16, 8, kernel_size = 3, stride = 2, padding = 1),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size = 2, stride = 1)
         )
 
         self._decoder = nn.Sequential(
-                nn.Linear(bottleneck_size, 32),
+                nn.ConvTranspose2d(8, 16, kernel_size = 3, stride = 2),
                 nn.ReLU(True),
-                nn.Linear(32, conv_out_size),
+                nn.ConvTranspose2d(16, 8, kernel_size = 5, stride = 3, padding = 1),
                 nn.ReLU(True),
-                UnFlatten(),
-                nn.ConvTranspose2d(32, 16, kernel_size = 3),
-                nn.ReLU(True),
-                nn.ConvTranspose2d(16, 1, kernel_size = 3),
+                nn.ConvTranspose2d(8, 1, kernel_size = 2, stride = 2, padding = 1),
                 nn.Tanh()
         )
 
@@ -83,7 +75,7 @@ if __name__ == '__main__':
 
     if os.path.exists(IMG_OUT_DIRECTORY):
         if args.overwrite:
-            os.removedirs(IMG_OUT_DIRECTORY)
+            shutil.rmtree(IMG_OUT_DIRECTORY)
         else:
             raise Exception('Image directory %s exists!' % IMG_OUT_DIRECTORY)
     os.makedirs(IMG_OUT_DIRECTORY)
@@ -107,7 +99,7 @@ if __name__ == '__main__':
 
     ae = AutoEncoder(BOTTLENECK_SIZE).to(device)
     loss_fn = nn.MSELoss()
-    optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE)
+    optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE, weight_decay = 1e-5)
     writer = SummaryWriter(comment = '-conv_auto_encoder_mnist')
     for epoch in range(1, MAX_EPOCHS + 1):
         train_loss = 0
@@ -128,9 +120,7 @@ if __name__ == '__main__':
                 img = img.to(device)
                 out = ae(img)
 
-                optimizer.zero_grad()
-                loss = loss_fn(out, img)
-                test_loss += loss
+                test_loss += loss_fn(out, img)
             test_loss /= len(test_data)
 
         print('Epoch %5d: train_loss=%.5f, test_loss=%.5f' % (epoch, train_loss, test_loss))
