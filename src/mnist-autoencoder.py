@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 
 import torch.utils.data
 import torchvision
@@ -9,11 +10,13 @@ from torchvision import datasets
 from torchvision.transforms import transforms
 
 
+torch.manual_seed(42)
+
 IMAGE_SIZE = 28 * 28
 BATCH_SIZE = 128
 TEST_BATCH_SIZE = 128
 BOTTLENECK_SIZE = 3
-LEARNING_RATE = 0.01
+LEARNING_RATE = 1e-3
 MAX_EPOCHS = 100
 WRITE_IMAGE_EVERY_N_EPOCHS = 10
 IMG_OUT_DIRECTORY = 'mnist-autoencoder_img'
@@ -62,7 +65,7 @@ if __name__ == '__main__':
 
     if os.path.exists(IMG_OUT_DIRECTORY):
         if args.overwrite:
-            os.removedirs(IMG_OUT_DIRECTORY)
+            shutil.rmtree(IMG_OUT_DIRECTORY)
         else:
             raise Exception('Image directory %s exists!' % IMG_OUT_DIRECTORY)
     os.makedirs(IMG_OUT_DIRECTORY)
@@ -85,8 +88,8 @@ if __name__ == '__main__':
                                             shuffle = True)
 
     ae = AutoEncoder(BOTTLENECK_SIZE).to(device)
-    loss_fn = nn.MSELoss()
-    optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE, weight_decay = 1e-5)
     writer = SummaryWriter(comment = '-auto_encoder_mnist')
     for epoch in range(1, MAX_EPOCHS + 1):
         train_loss = 0
@@ -96,7 +99,7 @@ if __name__ == '__main__':
             out = ae(img)
 
             optimizer.zero_grad()
-            loss = loss_fn(out, img)
+            loss = criterion(out, img)
             train_loss += loss
             loss.backward()
             optimizer.step()
@@ -110,7 +113,7 @@ if __name__ == '__main__':
                 out = ae(img)
 
                 optimizer.zero_grad()
-                loss = loss_fn(out, img)
+                loss = criterion(out, img)
                 test_loss += loss
             test_loss /= len(test_data)
 
