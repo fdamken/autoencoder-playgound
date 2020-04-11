@@ -127,3 +127,5 @@ if __name__ == '__main__':
             torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), IMG_OUT_DIRECTORY + '/img_%05d.png' % epoch)
             torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), IMG_OUT_DIRECTORY + '/out_%05d.png' % epoch)
     writer.close()
+
+    torch.save(ae.state_dict(), 'mnist-autoencoder.model')
