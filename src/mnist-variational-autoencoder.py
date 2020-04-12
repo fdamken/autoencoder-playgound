@@ -15,11 +15,10 @@ torch.manual_seed(42)
 
 BATCH_SIZE = 128
 TEST_BATCH_SIZE = 128
-BOTTLENECK_SIZE = 20
 LEARNING_RATE = 1e-3
 MAX_EPOCHS = 100
-WRITE_IMAGE_EVERY_N_EPOCHS = 1
-IMG_OUT_DIRECTORY = 'mnist-variational-autoencoder_img'
+WRITE_IMAGE_EVERY_N_EPOCHS = 10
+NAME = os.path.basename(__file__).replace('.py', '')
 
 
 
@@ -73,19 +72,23 @@ def loss_fn(img: torch.Tensor, reconstruction: torch.Tensor, mean: torch.Tensor,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cuda', action = 'store_true', help = 'Enable CUDA acceleration.')
-    parser.add_argument('--overwrite', action = 'store_true', help = 'Overwrite image directory %s directory if it exists.' % IMG_OUT_DIRECTORY)
+    parser.add_argument('bottleneck', help = 'Number of latent variables in the bottleneck.')
+    parser.add_argument('-c', '--cuda', action = 'store_true', help = 'Enable CUDA acceleration.')
+    parser.add_argument('-f', '--overwrite', action = 'store_true', help = f'Overwrite image directory directory if it exists.')
     args = parser.parse_args()
     if args.cuda and not torch.cuda.is_available():
         raise Exception('CUDA acceleration requested but is not available!')
     device = torch.device('cuda' if args.cuda else 'cpu')
+    bottleneck_size = args.bottleneck
+    img_out_directory = f'{NAME}_img-bottleneck={bottleneck_size}'
+    tb_comment = f'{NAME}-bottleneck={bottleneck_size}'
 
-    if os.path.exists(IMG_OUT_DIRECTORY):
+    if os.path.exists(img_out_directory):
         if args.overwrite:
-            shutil.rmtree(IMG_OUT_DIRECTORY)
+            shutil.rmtree(img_out_directory)
         else:
-            raise Exception('Image directory %s exists!' % IMG_OUT_DIRECTORY)
-    os.makedirs(IMG_OUT_DIRECTORY)
+            raise Exception('Image directory %s exists!' % img_out_directory)
+    os.makedirs(img_out_directory)
 
     train_data = torch.utils.data.DataLoader(datasets.MNIST('../data',
                                                             train = True,
@@ -104,9 +107,9 @@ if __name__ == '__main__':
                                             batch_size = TEST_BATCH_SIZE,
                                             shuffle = True)
 
-    vae = VariationalAutoEncoder(BOTTLENECK_SIZE).to(device)
+    vae = VariationalAutoEncoder(bottleneck_size).to(device)
     optimizer = optim.Adam(vae.parameters(), lr = LEARNING_RATE)
-    writer = SummaryWriter(comment = '-auto_encoder_mnist')
+    writer = SummaryWriter(comment = tb_comment)
     for epoch in range(1, MAX_EPOCHS + 1):
         train_loss = 0
         for img, _ in train_data:
@@ -140,8 +143,8 @@ if __name__ == '__main__':
             writer.add_image('original', torchvision.utils.make_grid(img.view(out.size(0), 1, 28, 28)), epoch)
             # noinspection PyUnboundLocalVariable
             writer.add_image('reconstruction', torchvision.utils.make_grid(out.view(out.size(0), 1, 28, 28)), epoch)
-            torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), IMG_OUT_DIRECTORY + '/img_%05d.png' % epoch)
-            torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), IMG_OUT_DIRECTORY + '/out_%05d.png' % epoch)
+            torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), f'{img_out_directory}/img_%05d.png' % epoch)
+            torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), f'{img_out_directory}/out_%05d.png' % epoch)
     writer.close()
 
     torch.save(vae.state_dict(), 'mnist-variational-autoencoder.model')

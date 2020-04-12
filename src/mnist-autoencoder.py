@@ -12,14 +12,12 @@ from torchvision.transforms import transforms
 
 torch.manual_seed(42)
 
-IMAGE_SIZE = 28 * 28
 BATCH_SIZE = 128
 TEST_BATCH_SIZE = 128
-BOTTLENECK_SIZE = 3
 LEARNING_RATE = 1e-3
 MAX_EPOCHS = 100
 WRITE_IMAGE_EVERY_N_EPOCHS = 10
-IMG_OUT_DIRECTORY = 'mnist-autoencoder_img'
+NAME = os.path.basename(__file__).replace('.py', '')
 
 
 
@@ -28,7 +26,7 @@ class AutoEncoder(nn.Module):
         super(AutoEncoder, self).__init__()
 
         self._encoder = nn.Sequential(
-                nn.Linear(IMAGE_SIZE, 128),
+                nn.Linear(784, 128),
                 nn.ReLU(True),
                 nn.Linear(128, 64),
                 nn.ReLU(True),
@@ -44,7 +42,7 @@ class AutoEncoder(nn.Module):
                 nn.ReLU(True),
                 nn.Linear(64, 128),
                 nn.ReLU(True),
-                nn.Linear(128, IMAGE_SIZE),
+                nn.Linear(128, 784),
                 nn.Tanh()
         )
 
@@ -56,19 +54,23 @@ class AutoEncoder(nn.Module):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cuda', action = 'store_true', help = 'Enable CUDA acceleration.')
-    parser.add_argument('--overwrite', action = 'store_true', help = 'Overwrite image directory %s directory if it exists.' % IMG_OUT_DIRECTORY)
+    parser.add_argument('bottleneck', help = 'Number of latent variables in the bottleneck.')
+    parser.add_argument('-c', '--cuda', action = 'store_true', help = 'Enable CUDA acceleration.')
+    parser.add_argument('-f', '--overwrite', action = 'store_true', help = f'Overwrite image directory directory if it exists.')
     args = parser.parse_args()
     if args.cuda and not torch.cuda.is_available():
         raise Exception('CUDA acceleration requested but is not available!')
     device = torch.device('cuda' if args.cuda else 'cpu')
+    bottleneck_size = args.bottleneck
+    img_out_directory = f'{NAME}_img-bottleneck={bottleneck_size}'
+    tb_comment = f'{NAME}-bottleneck={bottleneck_size}'
 
-    if os.path.exists(IMG_OUT_DIRECTORY):
+    if os.path.exists(img_out_directory):
         if args.overwrite:
-            shutil.rmtree(IMG_OUT_DIRECTORY)
+            shutil.rmtree(img_out_directory)
         else:
-            raise Exception('Image directory %s exists!' % IMG_OUT_DIRECTORY)
-    os.makedirs(IMG_OUT_DIRECTORY)
+            raise Exception('Image directory %s exists!' % img_out_directory)
+    os.makedirs(img_out_directory)
 
     train_data = torch.utils.data.DataLoader(datasets.MNIST('../data',
                                                             train = True,
@@ -87,7 +89,7 @@ if __name__ == '__main__':
                                             batch_size = TEST_BATCH_SIZE,
                                             shuffle = True)
 
-    ae = AutoEncoder(BOTTLENECK_SIZE).to(device)
+    ae = AutoEncoder(bottleneck_size).to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE, weight_decay = 1e-5)
     writer = SummaryWriter(comment = '-auto_encoder_mnist')
@@ -124,8 +126,8 @@ if __name__ == '__main__':
             writer.add_image('original', torchvision.utils.make_grid(img.view(out.size(0), 1, 28, 28)), epoch)
             # noinspection PyUnboundLocalVariable
             writer.add_image('reconstruction', torchvision.utils.make_grid(out.view(out.size(0), 1, 28, 28)), epoch)
-            torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), IMG_OUT_DIRECTORY + '/img_%05d.png' % epoch)
-            torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), IMG_OUT_DIRECTORY + '/out_%05d.png' % epoch)
+            torchvision.utils.save_image(img.view(img.size(0), 1, 28, 28), f'{img_out_directory}/img_%05d.png' % epoch)
+            torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), f'{img_out_directory}/out_%05d.png' % epoch)
     writer.close()
 
     torch.save(ae.state_dict(), 'mnist-autoencoder.model')
