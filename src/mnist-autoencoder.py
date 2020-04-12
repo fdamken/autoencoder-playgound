@@ -4,8 +4,8 @@ import shutil
 
 import torch.utils.data
 import torchvision
-from tensorboardX import SummaryWriter
 from torch import nn, optim
+from torch.utils.tensorboard.writer import SummaryWriter
 from torchvision import datasets
 from torchvision.transforms import transforms
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         raise Exception('CUDA acceleration requested but is not available!')
     device = torch.device('cuda' if args.cuda else 'cpu')
     bottleneck_size = args.bottleneck
-    img_out_directory = f'{NAME}_img-bottleneck={bottleneck_size}'
+    img_out_directory = f'tmp_{NAME}_img-bottleneck={bottleneck_size}'
     tb_comment = f'{NAME}-bottleneck={bottleneck_size}'
 
     if os.path.exists(img_out_directory):

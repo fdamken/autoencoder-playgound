@@ -4,8 +4,8 @@ import shutil
 
 import torch.utils.data
 import torchvision
-from tensorboardX import SummaryWriter
 from torch import nn, optim
+from torch.utils.tensorboard.writer import SummaryWriter
 from torchvision import datasets
 from torchvision.transforms import transforms
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     if args.cuda and not torch.cuda.is_available():
         raise Exception('CUDA acceleration requested but is not available!')
     device = torch.device('cuda' if args.cuda else 'cpu')
-    img_out_directory = f'{NAME}_img'
+    img_out_directory = f'tmp_{NAME}_img'
     tb_comment = NAME
 
     if os.path.exists(img_out_directory):
