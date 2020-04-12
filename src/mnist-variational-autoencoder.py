@@ -72,7 +72,7 @@ def loss_fn(img: torch.Tensor, reconstruction: torch.Tensor, mean: torch.Tensor,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('bottleneck', help = 'Number of latent variables in the bottleneck.')
+    parser.add_argument('bottleneck', type = int, help = 'Number of latent variables in the bottleneck.')
     parser.add_argument('-c', '--cuda', action = 'store_true', help = 'Enable CUDA acceleration.')
     parser.add_argument('-f', '--overwrite', action = 'store_true', help = f'Overwrite image directory directory if it exists.')
     args = parser.parse_args()
