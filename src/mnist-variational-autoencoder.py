@@ -147,4 +147,4 @@ if __name__ == '__main__':
             torchvision.utils.save_image(out.view(out.size(0), 1, 28, 28), f'{img_out_directory}/out_%05d.png' % epoch)
     writer.close()
 
-    torch.save(vae.state_dict(), 'mnist-variational-autoencoder.model')
+    torch.save(vae.state_dict(), f'{NAME}-bottleneck={bottleneck_size}.model')
