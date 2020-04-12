@@ -100,7 +100,7 @@ if __name__ == '__main__':
     ae = AutoEncoder().to(device)
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE, weight_decay = 1e-5)
-    writer = SummaryWriter(comment = '-conv_auto_encoder_mnist')
+    writer = SummaryWriter(comment = tb_comment)
     for epoch in range(1, MAX_EPOCHS + 1):
         train_loss = 0
         for img, _ in train_data:
