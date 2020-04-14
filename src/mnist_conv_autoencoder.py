@@ -60,6 +60,11 @@ class ConvAutoEncoder(nn.Module):
 
 
 
+def loss_fn(img: torch.Tensor, reconstruction: torch.Tensor):
+    return ((img - reconstruction) ** 2).sum((1, 2)).mean()
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--cuda', action = 'store_true', help = 'Enable CUDA acceleration.')
@@ -79,7 +84,6 @@ if __name__ == '__main__':
     os.makedirs(img_out_directory)
 
     ae = ConvAutoEncoder().to(device)
-    loss_fn = nn.MSELoss()
     optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE, weight_decay = 1e-5)
     writer = SummaryWriter(comment = tb_comment)
     for epoch in range(1, MAX_EPOCHS + 1):

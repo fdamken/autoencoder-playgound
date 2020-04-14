@@ -62,7 +62,7 @@ class VariationalAutoEncoder(nn.Module):
 
 def loss_fn(img: torch.Tensor, reconstruction: torch.Tensor, mean: torch.Tensor, logvar: torch.Tensor):
     kl = -(1 + logvar - mean ** 2 - torch.exp(logvar)).sum(1).mean() / 2.0
-    reconstruction_loss = ((reconstruction - img) ** 2).sum(1).mean()
+    reconstruction_loss = ((img - reconstruction) ** 2).sum(1).mean()
     elbo = -kl - reconstruction_loss
     return -elbo, kl, reconstruction_loss
 

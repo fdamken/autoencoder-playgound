@@ -58,6 +58,11 @@ class AutoEncoder(nn.Module):
 
 
 
+def loss_fn(img: torch.Tensor, reconstruction: torch.Tensor):
+    return ((img - reconstruction) ** 2).sum(1).mean()
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('bottleneck', type = int, help = 'Number of latent variables in the bottleneck.')
@@ -79,7 +84,6 @@ if __name__ == '__main__':
     os.makedirs(img_out_directory)
 
     ae = AutoEncoder(bottleneck_size).to(device)
-    criterion = nn.MSELoss()
     optimizer = optim.Adam(ae.parameters(), lr = LEARNING_RATE, weight_decay = 1e-5)
     writer = SummaryWriter(comment = tb_comment)
     for epoch in range(1, MAX_EPOCHS + 1):
@@ -90,7 +94,7 @@ if __name__ == '__main__':
             out = ae(img)
 
             optimizer.zero_grad()
-            loss = criterion(out, img)
+            loss = loss_fn(out, img)
             train_loss += loss
             loss.backward()
             optimizer.step()
@@ -103,7 +107,7 @@ if __name__ == '__main__':
                 img = img.to(device)
                 out = ae(img)
 
-                test_loss += criterion(out, img)
+                test_loss += loss_fn(out, img)
             test_loss /= len(test_data)
 
         print('Epoch %5d: train_loss=%.5f, test_loss=%.5f' % (epoch, train_loss, test_loss))
