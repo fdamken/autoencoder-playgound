@@ -144,6 +144,8 @@ if __name__ == '__main__':
                 test_kl_divergence += kl_divergence
                 test_reconstruction_loss += reconstruction_loss
             test_loss /= len(test_data)
+            test_kl_divergence /= len(test_data)
+            test_reconstruction_loss /= len(test_data)
 
         print('Epoch %5d: train_loss=%.5f, test_loss=%.5f' % (epoch, train_loss, test_loss))
         writer.add_scalar('train_loss', train_loss, epoch)
