@@ -71,7 +71,7 @@ if __name__ == '__main__':
         raise Exception('CUDA acceleration requested but is not available!')
     device = torch.device('cuda' if args.cuda else 'cpu')
     img_out_directory = f'tmp_{NAME}_img'
-    tb_comment = f'-{NAME}'
+    tb_comment = NAME
 
     if os.path.exists(img_out_directory):
         if args.overwrite:
