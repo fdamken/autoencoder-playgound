@@ -2,7 +2,6 @@ import argparse
 import os
 import shutil
 
-import torch.nn.functional as F
 import torch.utils.data
 import torchvision
 from torch import nn, optim
@@ -64,9 +63,10 @@ class VariationalAutoEncoder(nn.Module):
 
 
 def loss_fn(img: torch.Tensor, reconstruction: torch.Tensor, mean: torch.Tensor, logvar: torch.Tensor):
-    negative_kl = (1 + logvar - mean ** 2 - torch.exp(logvar)).sum(1) / 2.0
-    elbo = negative_kl - ((reconstruction - img) ** 2).sum(1)
-    return -elbo.mean()
+    kl = -(1 + logvar - mean ** 2 - torch.exp(logvar)).sum(1).mean() / 2.0
+    reconstruction_loss = ((reconstruction - img) ** 2).sum(1).mean()
+    elbo = -kl - reconstruction_loss
+    return -elbo, kl, reconstruction_loss
 
 
 
@@ -112,31 +112,46 @@ if __name__ == '__main__':
     writer = SummaryWriter(comment = tb_comment)
     for epoch in range(1, MAX_EPOCHS + 1):
         train_loss = 0
+        train_kl_divergence = 0
+        train_reconstruction_loss = 0
         for img, _ in train_data:
             img = img.view(img.size(0), -1)
             img = img.to(device)
             out, out_mean, out_logvar = vae(img)
 
             optimizer.zero_grad()
-            loss = loss_fn(img, out, out_mean, out_logvar)
+            loss, kl_divergence, reconstruction_loss = loss_fn(img, out, out_mean, out_logvar)
             train_loss += loss
+            train_kl_divergence += kl_divergence
+            train_reconstruction_loss += reconstruction_loss
             loss.backward()
             optimizer.step()
         train_loss /= len(train_data)
+        train_kl_divergence /= len(train_data)
+        train_reconstruction_loss /= len(train_data)
 
+        test_loss = 0
+        test_kl_divergence = 0
+        test_reconstruction_loss = 0
         with torch.no_grad():
-            test_loss = 0
             for img, _ in test_data:
                 img = img.view(img.size(0), -1)
                 img = img.to(device)
                 out, out_mean, out_logvar = vae(img)
 
-                test_loss += loss_fn(img, out, out_mean, out_logvar)
+                loss, kl_divergence, reconstruction_loss = loss_fn(img, out, out_mean, out_logvar)
+                test_loss += loss
+                test_kl_divergence += kl_divergence
+                test_reconstruction_loss += reconstruction_loss
             test_loss /= len(test_data)
 
         print('Epoch %5d: train_loss=%.5f, test_loss=%.5f' % (epoch, train_loss, test_loss))
         writer.add_scalar('train_loss', train_loss, epoch)
+        writer.add_scalar('train_kl_divergence', train_kl_divergence, epoch)
+        writer.add_scalar('train_reconstruction_loss', train_reconstruction_loss, epoch)
         writer.add_scalar('test_loss', test_loss, epoch)
+        writer.add_scalar('test_kl_divergence', test_kl_divergence, epoch)
+        writer.add_scalar('test_reconstruction_loss', test_reconstruction_loss, epoch)
 
         if epoch % WRITE_IMAGE_EVERY_N_EPOCHS == 0:
             # noinspection PyUnboundLocalVariable
